@@ -68,29 +68,24 @@ app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validasi input
     if (!email || !password) {
       return res.status(400).json({ message: 'Email dan password wajib diisi' });
     }
 
-    // Cari pengguna berdasarkan email
     const userQuery = await db.collection('users').where('email', '==', email).get();
 
     if (userQuery.empty) {
       return res.status(404).json({ message: 'Email / Password salah' });
     }
 
-    // Karena email seharusnya unik, ambil pengguna pertama
     const userDoc = userQuery.docs[0];
     const user = userDoc.data();
 
-    // Periksa password
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(404).json({ message: 'Email / Password salah' });
     }
 
-    // Buat payload token
     const payload = {
       username: user.username,
       email: user.email,
@@ -99,7 +94,6 @@ app.post('/login', async (req, res) => {
     const expiresIn = 60 * 60 * 1; // 1 jam
     const token = jwt.sign(payload, secret, { expiresIn: expiresIn });
 
-    // Kirim respons sukses
     return res.status(200).json({
       status: 'Success',
       message: 'Login Berhasil',
