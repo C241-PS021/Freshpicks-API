@@ -1,3 +1,5 @@
+require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const express = require('express');
 const app = express();
@@ -62,12 +64,21 @@ app.get('/login', async (req, res) => {
       return res.status(404).json({ message: 'Email / Password salah' });
     }
 
+    const payload = {
+      username: user.data().username,
+      email: user.data().email,
+    };
+    const secret = process.env.JWT_SECRET;
+    const expiresIn = 60 * 60 * 1;
+    const token = jwt.sign(payload, secret, { expiresIn: expiresIn });
+
     return res.status(200).json({
       message: 'Login Berhasil',
-      body: {
+      data: {
         username: user.data().username,
         email: user.data().email,
       },
+      token: token,
     });
   } catch (error) {
     res.send(error);
