@@ -17,11 +17,13 @@ const db = admin.firestore();
 
 app.all('/register', async (req, res) => {
   try {
+    const hash = await bcrypt.hash(req.body.password, 13);
+
     const id = req.body.email;
     const userData = {
       username: req.body.username,
       email: req.body.email,
-      password: req.body.password,
+      password: hash,
     };
 
     // Check if the email address has already been registered
@@ -45,18 +47,27 @@ app.all('/register', async (req, res) => {
 
 app.get('/login', async (req, res) => {
   try {
-    const users = await db
-      .collection('users')
-      .where('email', '==', req.body.email)
-      .where('password', '==', req.body.password)
-      .get();
+    // get user data based on email input
+    const user = await db.collection('users').doc(req.body.email).get();
+    if (!user.data()) {
+      return res.status(404).json({ message: 'Email / Password salah' });
+    }
+    const password = await bcrypt.compare(
+      req.body.password,
+      user.data().password
+    );
 
-    if (users.empty) {
-      res.status(404).json({ message: 'Email / Password salah' });
+    // check if the password is correct
+    if (!password) {
+      return res.status(404).json({ message: 'Email / Password salah' });
     }
 
-    users.forEach((user) => {
-      res.send(user.data());
+    return res.status(200).json({
+      message: 'Login Berhasil',
+      body: {
+        username: user.data().username,
+        email: user.data().email,
+      },
     });
   } catch (error) {
     res.send(error);
