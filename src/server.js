@@ -13,15 +13,10 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-app.get('/hello/:id', async (req, res) => {
-  const db = admin.firestore();
-  const existingUser = await db.collection('users').doc(req.params.id).get();
-  res.send(existingUser.data());
-});
+const db = admin.firestore();
 
 app.all('/register', async (req, res) => {
   try {
-    const db = admin.firestore();
     const id = req.body.email;
     const userData = {
       username: req.body.username,
@@ -42,6 +37,26 @@ app.all('/register', async (req, res) => {
     const storeData = await db.collection('users').doc(id).set(userData);
     res.status(200).json({
       message: 'Registrasi Berhasil!',
+    });
+  } catch (error) {
+    res.send(error);
+  }
+});
+
+app.get('/login', async (req, res) => {
+  try {
+    const users = await db
+      .collection('users')
+      .where('email', '==', req.body.email)
+      .where('password', '==', req.body.password)
+      .get();
+
+    if (users.empty) {
+      res.status(404).json({ message: 'Email / Password salah' });
+    }
+
+    users.forEach((user) => {
+      res.send(user.data());
     });
   } catch (error) {
     res.send(error);
