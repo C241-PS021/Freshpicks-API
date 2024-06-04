@@ -33,13 +33,13 @@ const bucket = gcs.bucket(process.env.GCLOUD_STORAGE_BUCKET);
 // Endpoint untuk melakukan Register
 app.all('/register', async (req, res) => {
   try {
-    const hash = await bcrypt.hash(req.body.password, 13);
+    const {username, email, password} = req.body;
 
     const id = crypto.randomUUID();
     const userData = {
-      username: req.body.username,
-      email: req.body.email,
-      password: hash,
+      username: username,
+      email: email,
+      password: await bcrypt.hash(password, 13),
     };
 
     const existingUser = await db.collection('users').where('email', '==', req.body.email).get();
@@ -133,6 +133,42 @@ app.get('/user/:userID', async(req,res) =>{
   }
 });
 
+// Endpoint untuk memperbarui data User
+app.put('/user/:userID', async (req, res) => {
+  try {
+    const userID = req.params.userID;
+    const { username, email, password } = req.body;
+
+    const userDoc = await db.collection('users').doc(userID).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    const updatedData = {};
+    if (username){
+      updatedData.username = username;
+    } 
+    if (email){
+      updatedData.email = email;
+    } 
+    if (password){
+      updatedData.password = await bcrypt.hash(password, 13);
+    } 
+
+    await db.collection('users').doc(userID).update(updatedData);
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Data pengguna berhasil diupdate',
+      data: updatedData,
+    });
+
+  } catch (error) {
+    console.error('Error saat mengupdate data pengguna:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Endpoint untuk upload gambar ke Google Cloud Storage
 app.post('/upload-scanned-image', upload.single('image'), async (req, res) => {
