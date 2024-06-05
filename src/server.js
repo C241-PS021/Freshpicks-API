@@ -33,7 +33,7 @@ const bucket = gcs.bucket(process.env.GCLOUD_STORAGE_BUCKET);
 // Endpoint untuk melakukan Register
 app.all('/register', async (req, res) => {
   try {
-    const {username, email, password} = req.body;
+    const { username, email, password } = req.body;
 
     const id = crypto.randomUUID();
     const userData = {
@@ -42,7 +42,10 @@ app.all('/register', async (req, res) => {
       password: await bcrypt.hash(password, 13),
     };
 
-    const existingUser = await db.collection('users').where('email', '==', req.body.email).get();
+    const existingUser = await db
+      .collection('users')
+      .where('email', '==', req.body.email)
+      .get();
 
     if (!existingUser.empty) {
       return res.status(409).json({
@@ -56,7 +59,6 @@ app.all('/register', async (req, res) => {
       message: 'Registrasi Berhasil!',
       userId: id,
     });
-
   } catch (error) {
     console.error('Error saat Registrasi:', error);
     res.status(500).json({ message: error.message });
@@ -69,10 +71,15 @@ app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email dan password wajib diisi' });
+      return res
+        .status(400)
+        .json({ message: 'Email dan password wajib diisi' });
     }
 
-    const userQuery = await db.collection('users').where('email', '==', email).get();
+    const userQuery = await db
+      .collection('users')
+      .where('email', '==', email)
+      .get();
 
     if (userQuery.empty) {
       return res.status(404).json({ message: 'Email / Password salah' });
@@ -103,7 +110,6 @@ app.post('/login', async (req, res) => {
       },
       token: token,
     });
-
   } catch (error) {
     console.error('Error saat Login:', error);
     res.status(500).json({ message: error.message });
@@ -111,8 +117,8 @@ app.post('/login', async (req, res) => {
 });
 
 // Endpoint untuk mendapatkan informasi User berdasarkan userID
-app.get('/user/:userID', async(req,res) =>{
-  try{
+app.get('/user/:userID', async (req, res) => {
+  try {
     const userID = req.params.userID;
     const userDoc = await db.collection('users').doc(userID).get();
 
@@ -126,9 +132,8 @@ app.get('/user/:userID', async(req,res) =>{
       status: 'Success',
       data: userData,
     });
-
-  } catch (error){
-    console.log("Error saat mendapatkan data pengguna:", error);
+  } catch (error) {
+    console.log('Error saat mendapatkan data pengguna:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -146,15 +151,15 @@ app.put('/user/:userID', async (req, res) => {
     }
 
     const updatedData = {};
-    if (username){
+    if (username) {
       updatedData.username = username;
-    } 
-    if (email){
+    }
+    if (email) {
       updatedData.email = email;
-    } 
-    if (password){
+    }
+    if (password) {
       updatedData.password = await bcrypt.hash(password, 13);
-    } 
+    }
 
     await db.collection('users').doc(userID).update(updatedData);
 
@@ -163,7 +168,6 @@ app.put('/user/:userID', async (req, res) => {
       message: 'Data pengguna berhasil diupdate',
       data: updatedData,
     });
-
   } catch (error) {
     console.error('Error saat mengupdate data pengguna:', error);
     res.status(500).json({ message: error.message });
@@ -186,15 +190,30 @@ app.post('/upload-scanned-image', upload.single('image'), async (req, res) => {
       res.status(500).json({ message: err.message });
     });
 
-    blobStream.on('finish', () => {
-      res.status(200).json({ 
+    blobStream.on('finish', async () => {
+      // ---------------------------------
+      // Save scan history to Firestore
+      // ---------------------------------
+      const scanHistoryID = crypto.randomUUID();
+      const scanHistoryData = {
+        scanResult: req.body.scanResult,
+        scannedImageURL: blob.publicUrl(),
+      };
+
+      await db
+        .collection('users')
+        .doc(req.body.userID)
+        .collection('scan-history')
+        .doc(scanHistoryID)
+        .set(scanHistoryData);
+      // ---------------------------------
+      res.status(200).json({
         status: 'Success',
-        message: 'Upload gambar berhasil'
+        message: 'Upload gambar berhasil',
       });
     });
 
     blobStream.end(req.file.buffer);
-
   } catch (error) {
     console.error('Error saat Upload gambar:', error);
     res.status(500).json({ message: error.message });
