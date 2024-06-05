@@ -159,7 +159,7 @@ app.get('/user', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint untuk memperbarui data User
+// Endpoint untuk memperbaharui data User
 app.put('/user', verifyToken, async (req, res) => {
   try {
     const userID = req.user.userID;
@@ -196,14 +196,66 @@ app.put('/user', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint upload scan result ke Google Cloud
+// Endpoint untuk upload foto profile ke Google Cloud
+app.post('/user/profile-picture', verifyToken, upload.single('profilePicture'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Tidak ada file yang diupload' });
+    }
+
+    const userDoc = await db.collection('users').doc(req.user.userID).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    const blob = bucket.file(`profile-pictures/${req.user.userID}${path.extname(req.file.originalname)}`);
+    const blobStream = blob.createWriteStream({
+      resumable: false,
+    });
+
+    blobStream.on('error', (err) => {
+      res.status(500).json({ message: err.message });
+    });
+
+    blobStream.on('finish', async () => {
+      const profilePictureURL = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+
+      const oldProfilePictureURL = userDoc.data().profilePictureURL;
+
+      await db.collection('users').doc(req.user.userID).update({ profilePictureURL });
+
+      if (oldProfilePictureURL) {
+        const oldFileName = oldProfilePictureURL.split(`${bucket.name}/`)[1];
+        if (oldFileName) {
+          const oldBlob = bucket.file(oldFileName);
+          oldBlob.delete().catch((err) => {
+            console.error('Error saat menghapus foto profil lama:', err.message);
+          });
+        }
+      }
+
+      res.status(200).json({
+        status: 'Success',
+        message: 'Foto profil berhasil diupdate',
+        profilePictureURL,
+      });
+    });
+
+    blobStream.end(req.file.buffer);
+  } catch (error) {
+    console.error('Error saat mengupload foto profil:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Endpoint upload hasil scan ke Google Cloud
 app.post('/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Tidak ada file yang diupload' });
     }
 
-    const blob = bucket.file(req.file.originalname);
+    const blob = bucket.file(`scanned-images/${req.user.userID}/${req.file.originalname}`);
     const blobStream = blob.createWriteStream({
       resumable: false,
     });
@@ -239,14 +291,19 @@ app.post('/scan-result-history', verifyToken, upload.single('image'), async (req
     }
 });
 
-// Endpoint untuk mendapatkan history scan result 
+// Endpoint untuk mendapatkan riwayat hasil scan pengguna 
 app.get('/scan-result-history', verifyToken, async (req, res) => {
   try {
-    const scanHistory = await db
+    const scanHistoryDoc = await db
       .collection('users')
       .doc(req.user.userID)
       .collection('scan-history')
       .get();
+    
+    const scanHistory = scanHistoryDoc.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
     res.status(200).json({
       status: 'Success',
