@@ -30,6 +30,30 @@ const gcs = new Storage({
 });
 const bucket = gcs.bucket(process.env.GCLOUD_STORAGE_BUCKET);
 
+// Middleware untuk memverifikasi Token
+function verifyToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  
+  if (!authHeader) {
+    return res.status(401).json({ message: 'Token tidak disertakan' });
+  }
+
+  const tokenParts = authHeader.split(' ');
+  const token = tokenParts[1];
+
+  const secret = process.env.JWT_SECRET;
+
+  jwt.verify(token, secret, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: 'Token tidak valid' });
+    }
+
+    req.user = decoded;
+
+    next();
+  });
+}
+
 // Endpoint untuk melakukan Register
 app.all('/register', async (req, res) => {
   try {
@@ -40,6 +64,7 @@ app.all('/register', async (req, res) => {
       username: username,
       email: email,
       password: await bcrypt.hash(password, 13),
+      dateOfRegistration: new Date().toISOString(),
     };
 
     const existingUser = await db.collection('users').where('email', '==', req.body.email).get();
@@ -89,6 +114,7 @@ app.post('/login', async (req, res) => {
     const payload = {
       username: user.username,
       email: user.email,
+      userID: userDoc.id,
     };
     const secret = process.env.JWT_SECRET;
     const expiresIn = 60 * 60 * 1; // 1 jam
@@ -111,9 +137,9 @@ app.post('/login', async (req, res) => {
 });
 
 // Endpoint untuk mendapatkan informasi User berdasarkan userID
-app.get('/user/:userID', async(req,res) =>{
-  try{
-    const userID = req.params.userID;
+app.get('/user', verifyToken, async (req, res) => {
+  try {
+    const userID = req.user.userID;
     const userDoc = await db.collection('users').doc(userID).get();
 
     if (!userDoc.exists) {
@@ -134,9 +160,9 @@ app.get('/user/:userID', async(req,res) =>{
 });
 
 // Endpoint untuk memperbarui data User
-app.put('/user/:userID', async (req, res) => {
+app.put('/user', verifyToken, async (req, res) => {
   try {
-    const userID = req.params.userID;
+    const userID = req.user.userID;
     const { username, email, password } = req.body;
 
     const userDoc = await db.collection('users').doc(userID).get();
@@ -161,7 +187,7 @@ app.put('/user/:userID', async (req, res) => {
     res.status(200).json({
       status: 'Success',
       message: 'Data pengguna berhasil diupdate',
-      data: updatedData,
+      data: userDoc.data(),
     });
 
   } catch (error) {
@@ -170,8 +196,8 @@ app.put('/user/:userID', async (req, res) => {
   }
 });
 
-// Endpoint untuk upload gambar ke Google Cloud Storage
-app.post('/upload-scanned-image', upload.single('image'), async (req, res) => {
+// Endpoint upload scan result ke Google Cloud
+app.post('/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Tidak ada file yang diupload' });
@@ -186,15 +212,49 @@ app.post('/upload-scanned-image', upload.single('image'), async (req, res) => {
       res.status(500).json({ message: err.message });
     });
 
-    blobStream.on('finish', () => {
-      res.status(200).json({ 
+    blobStream.on('finish', async () => {
+      const scanHistoryID = crypto.randomUUID();
+      const scanHistoryData = {
+        scanResult: req.body.scanResult,
+        scannedImageURL: blob.publicUrl(),
+        createdAt: new Date().toISOString(),
+      };
+
+      await db
+        .collection('users')
+        .doc(req.user.userID)
+        .collection('scan-history')
+        .doc(scanHistoryID)
+        .set(scanHistoryData);
+      res.status(200).json({
         status: 'Success',
         message: 'Upload gambar berhasil'
       });
     });
 
     blobStream.end(req.file.buffer);
+    }catch (error) {
+      console.error('Error saat menyimpan hasil scan:', error);
+      res.status(500).json({ message: error.message });
+    }
+});
 
+// Endpoint untuk mendapatkan history scan result 
+app.get('/scan-result-history', verifyToken, async (req, res) => {
+  try {
+    const scanHistory = await db
+      .collection('users')
+      .doc(req.user.userID)
+      .collection('scan-history')
+      .get();
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Riwayat scan berhasil ditampilkan',
+      data: {
+        scanHistory: scanHistory,
+      },
+    });
   } catch (error) {
     console.error('Error saat Upload gambar:', error);
     res.status(500).json({ message: error.message });
