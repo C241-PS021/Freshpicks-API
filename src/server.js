@@ -175,7 +175,7 @@ app.put('/user/:userID', async (req, res) => {
 });
 
 // Endpoint untuk upload gambar ke Google Cloud Storage
-app.post('/upload-scanned-image', upload.single('image'), async (req, res) => {
+app.post('/scan-result-history', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Tidak ada file yang diupload' });
@@ -209,13 +209,34 @@ app.post('/upload-scanned-image', upload.single('image'), async (req, res) => {
       // ---------------------------------
       res.status(200).json({
         status: 'Success',
-        message: 'Upload gambar berhasil',
+        message: 'Hasil scan berhasil disimpan',
       });
     });
 
     blobStream.end(req.file.buffer);
   } catch (error) {
-    console.error('Error saat Upload gambar:', error);
+    console.error('Error saat menyimpan hasil scan:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/scan-result-history/:userID', async (req, res) => {
+  try {
+    const scanHistory = await db
+      .collection('users')
+      .doc(req.params.userID)
+      .collection('scan-history')
+      .get();
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Riwayat scan berhasil ditampilkan',
+      data: {
+        scanHistory: scanHistory,
+      },
+    });
+  } catch (error) {
+    console.error('Error saat mengambil data riwayat scan:', error);
     res.status(500).json({ message: error.message });
   }
 });
