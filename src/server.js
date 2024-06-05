@@ -80,6 +80,7 @@ app.all('/register', async (req, res) => {
       status: 'Success',
       message: 'Registrasi Berhasil!',
       userId: id,
+      data: userData
     });
 
   } catch (error) {
@@ -150,6 +151,8 @@ app.get('/user', verifyToken, async (req, res) => {
 
     res.status(200).json({
       status: 'Success',
+      message: "Data pengguna berhasil didapatkan",
+      userID: userID,
       data: userData,
     });
 
@@ -187,7 +190,7 @@ app.put('/user', verifyToken, async (req, res) => {
     res.status(200).json({
       status: 'Success',
       message: 'Data pengguna berhasil diupdate',
-      data: userDoc.data(),
+      data: updatedData,
     });
 
   } catch (error) {
@@ -196,7 +199,7 @@ app.put('/user', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint untuk upload foto profile ke Google Cloud
+// Endpoint untuk upload foto profil pengguna ke Google Cloud
 app.post('/user/profile-picture', verifyToken, upload.single('profilePicture'), async (req, res) => {
   try {
     if (!req.file) {
@@ -248,6 +251,46 @@ app.post('/user/profile-picture', verifyToken, upload.single('profilePicture'), 
   }
 });
 
+// Endpoint untuk menghapus foto profil pengguna
+app.delete('/user/profile-picture', verifyToken, async (req, res) => {
+  try {
+    const userDoc = await db.collection('users').doc(req.user.userID).get();
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    const userData = userDoc.data();
+    const profilePictureURL = userData.profilePictureURL;
+
+    if (!profilePictureURL) {
+      return res.status(400).json({ message: 'Pengguna tidak memiliki foto profil' });
+    }
+    const oldFileName = profilePictureURL.split(`${bucket.name}/`)[1];
+    
+    if (!oldFileName) {
+      return res.status(400).json({ message: 'Tidak dapat menemukan file foto profil' });
+    }
+
+    const oldBlob = bucket.file(oldFileName);
+
+    await oldBlob.delete();
+
+    await db.collection('users').doc(req.user.userID).update({
+      profilePictureURL: admin.firestore.FieldValue.delete()
+    });
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Foto profil berhasil dihapus',
+    });
+  } catch (error) {
+    console.error('Error saat menghapus foto profil:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 // Endpoint upload hasil scan ke Google Cloud
 app.post('/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
   try {
@@ -280,7 +323,9 @@ app.post('/scan-result-history', verifyToken, upload.single('image'), async (req
         .set(scanHistoryData);
       res.status(200).json({
         status: 'Success',
-        message: 'Upload gambar berhasil'
+        message: 'Upload scan result berhasil',
+        scanId: scanHistoryID,
+        data: scanHistoryData,
       });
     });
 
@@ -308,6 +353,7 @@ app.get('/scan-result-history', verifyToken, async (req, res) => {
     res.status(200).json({
       status: 'Success',
       message: 'Riwayat scan berhasil ditampilkan',
+      userID: req.user.userID,
       data: {
         scanHistory: scanHistory,
       },
