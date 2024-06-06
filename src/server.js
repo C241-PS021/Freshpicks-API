@@ -124,6 +124,7 @@ app.post('/login', async (req, res) => {
     return res.status(200).json({
       status: 'Success',
       message: 'Login Berhasil',
+      userID: userDoc.id,
       data: {
         username: user.username,
         email: user.email,
@@ -292,7 +293,7 @@ app.delete('/user/profile-picture', verifyToken, async (req, res) => {
 
 
 // Endpoint upload hasil scan ke Google Cloud
-app.post('/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
+app.post('/user/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Tidak ada file yang diupload' });
@@ -324,7 +325,7 @@ app.post('/scan-result-history', verifyToken, upload.single('image'), async (req
       res.status(200).json({
         status: 'Success',
         message: 'Upload scan result berhasil',
-        scanId: scanHistoryID,
+        scanID: scanHistoryID,
         data: scanHistoryData,
       });
     });
@@ -337,14 +338,14 @@ app.post('/scan-result-history', verifyToken, upload.single('image'), async (req
 });
 
 // Endpoint untuk mendapatkan riwayat hasil scan pengguna 
-app.get('/scan-result-history', verifyToken, async (req, res) => {
+app.get('/user/scan-result-history', verifyToken, async (req, res) => {
   try {
     const scanHistoryDoc = await db
       .collection('users')
       .doc(req.user.userID)
       .collection('scan-history')
       .get();
-    
+
     const scanHistory = scanHistoryDoc.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -366,4 +367,103 @@ app.get('/scan-result-history', verifyToken, async (req, res) => {
 
 app.listen(port, () => {
   console.log(`App listening on http://localhost:${port}`);
+});
+
+// Endpoint untuk menghapus hasil scan berdasarkan ID
+app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) => {
+  try {
+    const scanID = req.params.scanID.replace(/:/g, '');;
+    console.log(scanID)
+    const userDoc = await db.collection('users').doc(req.user.userID).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    const scanDoc = await db
+      .collection('users')
+      .doc(req.user.userID)
+      .collection('scan-history')
+      .doc(scanID)
+      .get();
+
+    if (!scanDoc.exists) {
+      return res.status(404).json({ message: 'Hasil scan tidak ditemukan' });
+    }
+
+    const scanData = scanDoc.data();
+    const scannedImageURL = decodeURIComponent(scanData.scannedImageURL);
+
+    console.log(scannedImageURL)
+
+    if (scannedImageURL) {
+      const fileName = scannedImageURL.split(`${bucket.name}/`)[1];
+      if (fileName) {
+        const blob = bucket.file(fileName);
+        await blob.delete();
+      }
+    }
+
+    await db
+      .collection('users')
+      .doc(req.user.userID)
+      .collection('scan-history')
+      .doc(scanID)
+      .delete();
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Hasil scan berhasil dihapus',
+    });
+  } catch (error) {
+    console.error('Error saat menghapus hasil scan:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Endpoint untuk menghapus semua hasil scan
+app.delete('/user/scan-result-history', verifyToken, async (req, res) => {
+  try {
+    const userDoc = await db.collection('users').doc(req.user.userID).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+    }
+
+    const scanHistorySnapshot = await db
+      .collection('users')
+      .doc(req.user.userID)
+      .collection('scan-history')
+      .get();
+
+    const batch = db.batch();
+    const deletePromises = [];
+
+    scanHistorySnapshot.forEach((doc) => {
+      const scanData = doc.data();
+      const scannedImageURL = decodeURIComponent(scanData.scannedImageURL);
+      
+      if (scannedImageURL) {
+        const fileName = scannedImageURL.split(`${bucket.name}/`)[1];
+        if (fileName) {
+          const blob = bucket.file(fileName);
+          deletePromises.push(blob.delete().catch((err) => {
+            console.error('Error saat menghapus gambar hasil scan:', err.message);
+          }));
+        }
+      }
+      batch.delete(doc.ref);
+    });
+
+    await Promise.all(deletePromises);
+    await batch.commit();
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Semua hasil scan berhasil dihapus',
+    });
+  } catch (error) {
+    console.error('Error saat menghapus semua hasil scan:', error);
+    res.status(500).json({ message: error.message });
+  }
 });
