@@ -28,7 +28,7 @@ Register new user and store the data in Firestore
     "message": "Registrasi Berhasil!",
     "userID": "<userID>",
     "data": {
-      "username": "<ussername>",
+      "username": "<username>",
       "email": "<email>",
       "password": "<hash password>", 
       "dateOfRegistration": "<dateOfRegistration>"
@@ -60,7 +60,7 @@ Login existing user
     "message": "Login Berhasil!",
     "userID": "<userID>",
     "data": {
-      "username": <ussername>,
+      "username": "<username>",
       "email": "<email>",
     }
     "token": "<token>"
@@ -91,7 +91,7 @@ Get user detail from Firestore
     "message": "Data pengguna berhasil didapatkan",
     "userID": "<userID>",
     "data": {
-      "username": "<ussername>",
+      "username": "<username>",
       "email": "<email>",
       "password": "<hash password>",
       "profilePictureURL": "<profilePictureURL>", 
@@ -117,6 +117,11 @@ Update user detail
 
 > `Authorization` : `Bearer <token>`
 
+**Request Body:**
+> - username as `string`
+> - email as `string`
+> - password as `string`
+
 **Response Data:**
   ```json
   {
@@ -124,11 +129,9 @@ Update user detail
     "message": "Data pengguna berhasil diperbaharui",
     "userID": "<userID>",
     "data": {
-      "username": "<ussername>",
+      "username": "<username>",
       "email": "<email>",
       "password": "<hash password>",
-      "profilePictureURL": "<profilePictureURL>", 
-      "dateOfRegistration": "<dateOfRegistration>"
     }
   }
   ```
