@@ -55,7 +55,7 @@ function verifyToken(req, res, next) {
 }
 
 // Endpoint untuk melakukan Register
-app.all('/register', async (req, res) => {
+app.post('/register', async (req, res) => {
   try {
     const {username, email, password} = req.body;
 
@@ -138,7 +138,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Endpoint untuk mendapatkan informasi User berdasarkan userID
+// Endpoint untuk mendapatkan informasi Pengguna berdasarkan userID
 app.get('/user', verifyToken, async (req, res) => {
   try {
     const userID = req.user.userID;
@@ -163,7 +163,7 @@ app.get('/user', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint untuk memperbaharui data User
+// Endpoint untuk memperbaharui data Pengguna
 app.put('/user', verifyToken, async (req, res) => {
   try {
     const userID = req.user.userID;
@@ -252,7 +252,7 @@ app.post('/user/profile-picture', verifyToken, upload.single('profilePicture'), 
   }
 });
 
-// Endpoint untuk menghapus foto profil pengguna
+// Endpoint untuk menghapus foto profil Pengguna
 app.delete('/user/profile-picture', verifyToken, async (req, res) => {
   try {
     const userDoc = await db.collection('users').doc(req.user.userID).get();
@@ -337,7 +337,7 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
     }
 });
 
-// Endpoint untuk mendapatkan riwayat hasil scan pengguna 
+// Endpoint untuk mendapatkan riwayat hasil scan Pengguna 
 app.get('/user/scan-result-history', verifyToken, async (req, res) => {
   try {
     const scanHistoryDoc = await db
@@ -360,7 +360,7 @@ app.get('/user/scan-result-history', verifyToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error saat Upload gambar:', error);
+    console.error('Error saat mendapatkan pengguna:', error);
     res.status(500).json({ message: error.message });
   }
 });
