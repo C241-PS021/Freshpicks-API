@@ -4,6 +4,8 @@ We use Node.js with Express.js framework to create our Backend API
 # API Endpoint
 
 ## Register
+
+**Description :**
 Register new user
 
 **Method :**
@@ -26,7 +28,7 @@ Register new user
     "message": "Registrasi Berhasil!",
     "userID": "<userID>",
     "data": {
-      "username": <ussername>,
+      "username": "<ussername>",
       "email": "<email>",
       "password": "<hash password>", 
       "dateOfRegistration": "<dateOfRegistration>"
