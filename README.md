@@ -6,7 +6,7 @@ We use Node.js with Express.js framework to create our Backend API
 ## Register
 
 **Description :**
-Register new user
+Register new user and store the data in Firestore
 
 **Method :**
 
@@ -36,19 +36,24 @@ Register new user
   }
   ```
 
-  ## Login
+## Login
 
-- Method: `POST`
-- Path: `/login`
-- Description: Login already existing user
-- Request Data:
-  ```json
-  {
-    "email": "string",
-    "password": "string"
-  }
-  ```
-- Response Data:
+**Description :**
+Login existing user
+
+**Method :**
+
+> `POST`
+
+**Path :**
+
+> /login
+ 
+**Request Body:**
+> - email as `string`
+> - password as `string`
+
+**Response Data:**
   ```json
   {
     "status": "Success",
@@ -62,28 +67,98 @@ Register new user
   }
   ```
 
-  ## Login
+## User Detail
 
-- Method: `GET`
-- Path: `/login`
-- Description: Login already existing user
-- Request Data:
-  ```json
-  {
-    "email": "string",
-    "password": "string"
-  }
-  ```
-- Response Data:
+**Description :**
+Get user detail from Firestore
+
+**Method :**
+
+> `GET`
+
+**Path :**
+
+> /user
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Response Data:**
   ```json
   {
     "status": "Success",
-    "message": "Login Berhasil!",
+    "message": "Data pengguna berhasil didapatkan",
     "userID": "<userID>",
     "data": {
-      "username": <ussername>,
+      "username": "<ussername>",
       "email": "<email>",
+      "password": "<hash password>",
+      "profilePictureURL": "<profilePictureURL>", 
+      "dateOfRegistration": "<dateOfRegistration>"
     }
-    "token": "<token>"
+  }
+  ```
+
+## Update User Detail
+
+**Description :**
+Update user detail
+
+**Method :**
+
+> `PUT`
+
+**Path :**
+
+> /user
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Response Data:**
+  ```json
+  {
+    "status": "Success",
+    "message": "Data pengguna berhasil diperbaharui",
+    "userID": "<userID>",
+    "data": {
+      "username": "<ussername>",
+      "email": "<email>",
+      "password": "<hash password>",
+      "profilePictureURL": "<profilePictureURL>", 
+      "dateOfRegistration": "<dateOfRegistration>"
+    }
+  }
+  ```
+
+## Upload Photo Profile
+
+**Description :**
+Upload photo profile to Google Cloud Storage 
+
+**Method :**
+
+> `POST`
+
+**Path :**
+
+> /user/profile-picture
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Request Body:**
+> - image as file `png`, `jpg`, `jpeg`
+
+**Response Data:**
+  ```json
+  {
+    "status": "Success",
+    "message": "Foto profil berhasil diupload",
+    "userID": "<userID>",
+    "profilePictureURL": "<profilePictureURL>"
   }
   ```
