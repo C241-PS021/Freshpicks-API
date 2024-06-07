@@ -4,9 +4,9 @@ We use Node.js with Express.js framework to create our Backend API
 # API Endpoint
 
 ## Register
+Register new user
 
 **Method :**
-Register new user
 
 > `POST`
 
@@ -14,12 +14,12 @@ Register new user
 
 > /register
  
-- Request Body:
+**Request Body:**
 > - username as `string`,
 > - email as `string`, must be unique
 > - password as `string`
 
-- Response:
+**Response:**
   ```json
   {
     "status": "Success",
