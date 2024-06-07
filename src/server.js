@@ -79,7 +79,7 @@ app.post('/register', async (req, res) => {
     res.status(200).json({
       status: 'Success',
       message: 'Registrasi Berhasil!',
-      userId: id,
+      userID: id,
       data: userData
     });
 
@@ -190,7 +190,8 @@ app.put('/user', verifyToken, async (req, res) => {
 
     res.status(200).json({
       status: 'Success',
-      message: 'Data pengguna berhasil diupdate',
+      message: 'Data pengguna berhasil diperbaharui',
+      userID: userID,
       data: updatedData,
     });
 
@@ -240,8 +241,9 @@ app.post('/user/profile-picture', verifyToken, upload.single('profilePicture'), 
 
       res.status(200).json({
         status: 'Success',
-        message: 'Foto profil berhasil diupdate',
-        profilePictureURL,
+        message: 'Foto profil berhasil diupload',
+        userID: req.user.userID,
+        profilePictureURL
       });
     });
 
@@ -284,6 +286,7 @@ app.delete('/user/profile-picture', verifyToken, async (req, res) => {
     res.status(200).json({
       status: 'Success',
       message: 'Foto profil berhasil dihapus',
+      userID: req.user.userID
     });
   } catch (error) {
     console.error('Error saat menghapus foto profil:', error);
@@ -325,6 +328,7 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
       res.status(200).json({
         status: 'Success',
         message: 'Upload scan result berhasil',
+        userID: req.user.userID,
         scanID: scanHistoryID,
         data: scanHistoryData,
       });
@@ -414,6 +418,7 @@ app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) =>
     res.status(200).json({
       status: 'Success',
       message: 'Hasil scan berhasil dihapus',
+      userID: req.user.userID
     });
   } catch (error) {
     console.error('Error saat menghapus hasil scan:', error);
@@ -461,6 +466,7 @@ app.delete('/user/scan-result-history', verifyToken, async (req, res) => {
     res.status(200).json({
       status: 'Success',
       message: 'Semua hasil scan berhasil dihapus',
+      userID: req.user.userID
     });
   } catch (error) {
     console.error('Error saat menghapus semua hasil scan:', error);
