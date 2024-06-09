@@ -59,6 +59,19 @@ app.post('/register', async (req, res) => {
   try {
     const {username, email, password} = req.body;
 
+    if (!username ||!email || !password) {
+      return res.status(400).json({ message: 'Username, Email, dan Password wajib diisi' });
+    }
+
+    if (!/\S+@\S+/.test(email)) {
+      return res.status(400).json({ message: 'Email tidak valid' });
+    }
+
+    // Validasi panjang password
+    if (password.length < 5) {
+      return res.status(400).json({ message: 'Password harus terdiri dari minimal 5 karakter' });
+    }
+
     const id = crypto.randomUUID();
     const userData = {
       username: username,
@@ -118,7 +131,7 @@ app.post('/login', async (req, res) => {
       userID: userDoc.id,
     };
     const secret = process.env.JWT_SECRET;
-    const expiresIn = 60 * 60 * 1; // 1 jam
+    const expiresIn = 60 * 60 * 24; // 24 jam
     const token = jwt.sign(payload, secret, { expiresIn: expiresIn });
 
     return res.status(200).json({
