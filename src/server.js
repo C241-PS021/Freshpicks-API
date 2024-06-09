@@ -68,7 +68,7 @@ app.post('/register', async (req, res) => {
     }
 
     // Validasi panjang password
-    if (password.length < 5) {
+    if (password.length < 8) {
       return res.status(400).json({ message: 'Password harus terdiri dari minimal 5 karakter' });
     }
 
