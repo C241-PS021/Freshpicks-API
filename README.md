@@ -67,7 +67,7 @@ Login existing user
   }
   ```
 
-## User Detail
+## Get User Detail
 
 **Description :**
 Get user detail from Firestore
@@ -93,53 +93,16 @@ Get user detail from Firestore
     "data": {
       "username": "<username>",
       "email": "<email>",
-      "password": "<hash password>",
-      "profilePictureURL": "<profilePictureURL>", 
+      "password": "<hash password>", 
       "dateOfRegistration": "<dateOfRegistration>"
     }
   }
   ```
 
-## Update User Detail
+## Upload User Scan Result
 
 **Description :**
-Update user detail
-
-**Method :**
-
-> `PUT`
-
-**Path :**
-
-> /user
-
-**HEADER :**
-
-> `Authorization` : `Bearer <token>`
-
-**Request Body:**
-> - username as `string`
-> - email as `string`
-> - password as `string`
-
-**Response Data:**
-  ```json
-  {
-    "status": "Success",
-    "message": "Data pengguna berhasil diperbaharui",
-    "userID": "<userID>",
-    "data": {
-      "username": "<username>",
-      "email": "<email>",
-      "password": "<hash password>",
-    }
-  }
-  ```
-
-## Upload Photo Profile
-
-**Description :**
-Upload photo profile to Google Cloud Storage 
+Upload scan result to Google Cloud Storage and Firestore
 
 **Method :**
 
@@ -147,7 +110,7 @@ Upload photo profile to Google Cloud Storage
 
 **Path :**
 
-> /user/profile-picture
+> /user/scan-result-history
 
 **HEADER :**
 
@@ -155,13 +118,113 @@ Upload photo profile to Google Cloud Storage
 
 **Request Body:**
 > - image as file `png`, `jpg`, `jpeg`
+> - fruitName as `string`
+> - scanResult as `string`
 
 **Response Data:**
   ```json
   {
     "status": "Success",
-    "message": "Foto profil berhasil diupload",
+    "message": "Upload scan result berhasil",
     "userID": "<userID>",
-    "profilePictureURL": "<profilePictureURL>"
+    "scanID": "<scanID>",
+    "data": {
+      "fruitName": "<fruitName>",
+      "scanResult": "<scanResult>",
+      "scannedImageURL": "<scannedImageURL>", 
+      "createdAt": "<createdAt>"
+    }
+  }
+  ```
+
+## Get User Scan Result History
+
+**Description :**
+Get user scan result history from Google Cloud Storage and Firestore
+
+**Method :**
+
+> `GET`
+
+**Path :**
+
+> /user/scan-result-history
+
+**Parameter :**
+
+> - fruitName as `string`
+> - scanResult as `string`
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Response Data:**
+  ```json
+  {
+    "status": "Success",
+    "message": "Riwayat scan berhasil didapatkan",
+    "userID": "<userID>",
+    "scanHistory": [
+            {
+                "id": "<scanID>",
+                "createdAt": "<createdAt>",
+                "scannedImageURL": "<scannedImageURL>",
+                "fruitName": "<fruitName>",
+                "scanResult": "<scanResult>"
+            },
+  }
+  ```
+
+## Delete User Scan Result History by ScanID
+
+**Description :**
+Delete user scan result history by scanid from Google Cloud Storage and Firestore
+
+**Method :**
+
+> `DELETE`
+
+**Path :**
+
+> /user/scan-result-history/:scanID
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Response Data:**
+  ```json
+  {
+    "status": "Success",
+    "message": "Hasil scan berhasil dihapus",
+    "userID": "<userID>",
+    "scanID": "<scanID>"
+  }
+  ```
+
+## Delete All User Scan Result History
+
+**Description :**
+Delete all user scan result history from Google Cloud Storage and Firestore
+
+**Method :**
+
+> `DELETE`
+
+**Path :**
+
+> /user/scan-result-history
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Response Data:**
+  ```json
+  {
+    "status": "Success",
+    "message": "Semua riwayat hasil scan berhasil dihapus",
+    "userID": "<userID>",
   }
   ```
