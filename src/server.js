@@ -163,143 +163,15 @@ app.get('/user', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint untuk memperbaharui data Pengguna
-app.put('/user', verifyToken, async (req, res) => {
-  try {
-    const userID = req.user.userID;
-    const { username, email, password } = req.body;
-
-    const userDoc = await db.collection('users').doc(userID).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
-    }
-
-    const updatedData = {};
-    if (username){
-      updatedData.username = username;
-    } 
-    if (email){
-      updatedData.email = email;
-    } 
-    if (password){
-      updatedData.password = await bcrypt.hash(password, 13);
-    } 
-
-    await db.collection('users').doc(userID).update(updatedData);
-
-    res.status(200).json({
-      status: 'Success',
-      message: 'Data pengguna berhasil diperbaharui',
-      userID: userID,
-      data: updatedData,
-    });
-
-  } catch (error) {
-    console.error('Error saat mengupdate data pengguna:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Endpoint untuk upload foto profil pengguna ke Google Cloud
-app.post('/user/profile-picture', verifyToken, upload.single('profilePicture'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Tidak ada file yang diupload' });
-    }
-
-    const userDoc = await db.collection('users').doc(req.user.userID).get();
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
-    }
-
-    const blob = bucket.file(`profile-pictures/${req.user.userID}${path.extname(req.file.originalname)}`);
-    const blobStream = blob.createWriteStream({
-      resumable: false,
-    });
-
-    blobStream.on('error', (err) => {
-      res.status(500).json({ message: err.message });
-    });
-
-    blobStream.on('finish', async () => {
-      const profilePictureURL = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-
-      const oldProfilePictureURL = userDoc.data().profilePictureURL;
-
-      await db.collection('users').doc(req.user.userID).update({ profilePictureURL });
-
-      if (oldProfilePictureURL) {
-        const oldFileName = oldProfilePictureURL.split(`${bucket.name}/`)[1];
-        if (oldFileName) {
-          const oldBlob = bucket.file(oldFileName);
-          oldBlob.delete().catch((err) => {
-            console.error('Error saat menghapus foto profil lama:', err.message);
-          });
-        }
-      }
-
-      res.status(200).json({
-        status: 'Success',
-        message: 'Foto profil berhasil diupload',
-        userID: req.user.userID,
-        profilePictureURL
-      });
-    });
-
-    blobStream.end(req.file.buffer);
-  } catch (error) {
-    console.error('Error saat mengupload foto profil:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Endpoint untuk menghapus foto profil Pengguna
-app.delete('/user/profile-picture', verifyToken, async (req, res) => {
-  try {
-    const userDoc = await db.collection('users').doc(req.user.userID).get();
-    
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
-    }
-
-    const userData = userDoc.data();
-    const profilePictureURL = userData.profilePictureURL;
-
-    if (!profilePictureURL) {
-      return res.status(400).json({ message: 'Pengguna tidak memiliki foto profil' });
-    }
-    const oldFileName = profilePictureURL.split(`${bucket.name}/`)[1];
-    
-    if (!oldFileName) {
-      return res.status(400).json({ message: 'Tidak dapat menemukan file foto profil' });
-    }
-
-    const oldBlob = bucket.file(oldFileName);
-
-    await oldBlob.delete();
-
-    await db.collection('users').doc(req.user.userID).update({
-      profilePictureURL: admin.firestore.FieldValue.delete()
-    });
-
-    res.status(200).json({
-      status: 'Success',
-      message: 'Foto profil berhasil dihapus',
-      userID: req.user.userID
-    });
-  } catch (error) {
-    console.error('Error saat menghapus foto profil:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-
 // Endpoint upload hasil scan ke Google Cloud
 app.post('/user/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Tidak ada file yang diupload' });
+      return res.status(400).json({ message: 'Tidak ada Gambar yang diupload' });
+    }
+
+    if(!req.body.fruitName || !req.body.scanResult){
+      return res.status(400).json({ message: 'Request body tidak lengkap' });
     }
 
     const blob = bucket.file(`scanned-images/${req.user.userID}/${req.file.originalname}`);
@@ -314,6 +186,7 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
     blobStream.on('finish', async () => {
       const scanHistoryID = crypto.randomUUID();
       const scanHistoryData = {
+        fruitName: req.body.fruitName,
         scanResult: req.body.scanResult,
         scannedImageURL: blob.publicUrl(),
         createdAt: new Date().toISOString(),
@@ -344,16 +217,30 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
 // Endpoint untuk mendapatkan riwayat hasil scan Pengguna 
 app.get('/user/scan-result-history', verifyToken, async (req, res) => {
   try {
-    const scanHistoryDoc = await db
-      .collection('users')
-      .doc(req.user.userID)
-      .collection('scan-history')
-      .get();
+    const { fruitName, scanResult } = req.query;
 
-    const scanHistory = scanHistoryDoc.docs.map(doc => ({
+    let query = db.collection('users')
+      .doc(req.user.userID)
+      .collection('scan-history');
+
+    if (fruitName) {
+      query = query.where('fruitName', '==', fruitName);
+    }
+
+    if (scanResult) {
+      query = query.where('scanResult', '==', scanResult);
+    }
+
+    const scanHistorySnapshot = await query.get();
+
+    const scanHistory = scanHistorySnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
+
+    if (scanHistory.length === 0) {
+      return res.status(404).json({ message: 'Tidak ada hasil scan yang ditemukan dengan kriteria yang diberikan' });
+    }
 
     res.status(200).json({
       status: 'Success',
@@ -364,16 +251,12 @@ app.get('/user/scan-result-history', verifyToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error saat mendapatkan pengguna:', error);
+    console.error('Error saat mendapatkan riwayat scan:', error);
     res.status(500).json({ message: error.message });
   }
 });
 
-app.listen(port, () => {
-  console.log(`App listening on http://localhost:${port}`);
-});
-
-// Endpoint untuk menghapus hasil scan berdasarkan ID
+// Endpoint untuk menghapus riwayat hasil scan berdasarkan ID
 app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) => {
   try {
     const scanID = req.params.scanID.replace(/:/g, '');;
@@ -418,7 +301,8 @@ app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) =>
     res.status(200).json({
       status: 'Success',
       message: 'Hasil scan berhasil dihapus',
-      userID: req.user.userID
+      userID: req.user.userID,
+      scanID: scanID
     });
   } catch (error) {
     console.error('Error saat menghapus hasil scan:', error);
@@ -426,7 +310,7 @@ app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) =>
   }
 });
 
-// Endpoint untuk menghapus semua hasil scan
+// Endpoint untuk menghapus semua riwayat hasil scan
 app.delete('/user/scan-result-history', verifyToken, async (req, res) => {
   try {
     const userDoc = await db.collection('users').doc(req.user.userID).get();
@@ -465,11 +349,15 @@ app.delete('/user/scan-result-history', verifyToken, async (req, res) => {
 
     res.status(200).json({
       status: 'Success',
-      message: 'Semua hasil scan berhasil dihapus',
+      message: 'Semua riwayat hasil scan berhasil dihapus',
       userID: req.user.userID
     });
   } catch (error) {
     console.error('Error saat menghapus semua hasil scan:', error);
     res.status(500).json({ message: error.message });
   }
+});
+
+app.listen(port, () => {
+  console.log(`App listening on http://localhost:${port}`);
 });
