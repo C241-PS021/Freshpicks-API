@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Storage } = require('@google-cloud/storage');
 const jwt = require('jsonwebtoken');
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
@@ -69,7 +69,7 @@ app.post('/register', async (req, res) => {
 
     // Validasi panjang password
     if (password.length < 8) {
-      return res.status(400).json({ message: 'Password harus terdiri dari minimal 5 karakter' });
+      return res.status(400).json({ message: 'Password harus terdiri dari minimal 8 karakter' });
     }
 
     const id = crypto.randomUUID();
