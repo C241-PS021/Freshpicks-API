@@ -67,6 +67,37 @@ Login existing user
   }
   ```
 
+## Get Fruit List
+
+**Description :**
+Get supported fruit name and description
+
+**Method :**
+
+> `GET`
+
+**Path :**
+
+> /fruits
+
+**HEADER :**
+
+> `Authorization` : `Bearer <token>`
+
+**Response Data:**
+  ```json
+  {
+    "status": "Success",
+    "message": "Daftar buah berhasil didapatkan",
+    "fruitList": [
+            {
+                "Name": "<Name>",
+                "Description": "<Description>"
+                "fruitImageURL": "<fruitImageURL>",
+            },
+  }
+  ```
+
 ## Get User Detail
 
 **Description :**
