@@ -131,8 +131,7 @@ app.post('/login', async (req, res) => {
       userID: userDoc.id,
     };
     const secret = process.env.JWT_SECRET;
-    const expiresIn = 60 * 60 * 24; // 24 jam
-    const token = jwt.sign(payload, secret, { expiresIn: expiresIn });
+    const token = jwt.sign(payload, secret);
 
     return res.status(200).json({
       status: 'Success',
@@ -150,6 +149,27 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Endpoint untuk mendapatkan daftar buah
+app.get('/fruits', verifyToken, async (req, res) => {
+  try {
+    let fruitsSnapshot = await db.collection('fruit').get();
+
+    const fruits = fruitsSnapshot.docs.map(doc => ({
+      ...doc.data(),
+    }));
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'Daftar buah berhasil didapatkan',
+      fruitList: fruits,
+    });
+  } catch (error) {
+    console.error('Error saat mendapatkan Daftar buah:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 // Endpoint untuk mendapatkan informasi Pengguna berdasarkan userID
 app.get('/user', verifyToken, async (req, res) => {
