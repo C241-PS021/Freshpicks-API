@@ -70,7 +70,7 @@ Login existing user
 ## Get Fruit List
 
 **Description :**
-Get supported fruit name and description
+Get supported fruit name, description, and image
 
 **Method :**
 
