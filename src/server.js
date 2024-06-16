@@ -35,7 +35,10 @@ function verifyToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   
   if (!authHeader) {
-    return res.status(401).json({ message: 'Token tidak disertakan' });
+    return res.status(401).json({ 
+      error: true,
+      message: 'Token tidak disertakan' 
+    });
   }
 
   const tokenParts = authHeader.split(' ');
@@ -45,7 +48,10 @@ function verifyToken(req, res, next) {
 
   jwt.verify(token, secret, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ message: 'Token tidak valid' });
+      return res.status(401).json({ 
+        error: true,
+        message: 'Token tidak valid' 
+      });
     }
 
     req.user = decoded;
@@ -60,16 +66,25 @@ app.post('/register', async (req, res) => {
     const {username, email, password} = req.body;
 
     if (!username ||!email || !password) {
-      return res.status(400).json({ message: 'Username, Email, dan Password wajib diisi' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Username, Email, dan Password wajib diisi' 
+      });
     }
 
     if (!/\S+@\S+/.test(email)) {
-      return res.status(400).json({ message: 'Email tidak valid' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Email tidak valid' 
+      });
     }
 
     // Validasi panjang password
     if (password.length < 8) {
-      return res.status(400).json({ message: 'Password harus terdiri dari minimal 8 karakter' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Password harus terdiri dari minimal 8 karakter' 
+      });
     }
 
     const id = crypto.randomUUID();
@@ -83,22 +98,24 @@ app.post('/register', async (req, res) => {
     const existingUser = await db.collection('users').where('email', '==', req.body.email).get();
 
     if (!existingUser.empty) {
-      return res.status(409).json({
+      return res.status(400).json({
+        error: true,
         message: 'Email sudah terdaftar!',
       });
     }
 
     await db.collection('users').doc(id).set(userData);
     res.status(200).json({
-      status: 'Success',
+      error: false,
       message: 'Registrasi Berhasil!',
-      userID: id,
-      data: userData
     });
 
   } catch (error) {
     console.error('Error saat Registrasi:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
@@ -108,13 +125,19 @@ app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email dan password wajib diisi' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Email dan password wajib diisi' 
+      });
     }
 
     const userQuery = await db.collection('users').where('email', '==', email).get();
 
     if (userQuery.empty) {
-      return res.status(404).json({ message: 'Email / Password salah' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Email / Password salah' 
+      });
     }
 
     const userDoc = userQuery.docs[0];
@@ -122,7 +145,10 @@ app.post('/login', async (req, res) => {
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      return res.status(404).json({ message: 'Email / Password salah' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Email / Password salah' 
+      });
     }
 
     const payload = {
@@ -134,19 +160,24 @@ app.post('/login', async (req, res) => {
     const token = jwt.sign(payload, secret);
 
     return res.status(200).json({
-      status: 'Success',
+      error: false,
       message: 'Login Berhasil',
-      userID: userDoc.id,
       data: {
+        userID: userDoc.id,
         username: user.username,
         email: user.email,
+        password: user.password,
+        dateOfRegistration: user.dateOfRegistration,
+        token: token,
       },
-      token: token,
     });
 
   } catch (error) {
     console.error('Error saat Login:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
@@ -160,13 +191,17 @@ app.get('/fruits', verifyToken, async (req, res) => {
     }));
 
     res.status(200).json({
+      error: false,
       status: 'Success',
       message: 'Daftar buah berhasil didapatkan',
       fruitList: fruits,
     });
   } catch (error) {
     console.error('Error saat mendapatkan Daftar buah:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
@@ -178,21 +213,29 @@ app.get('/user', verifyToken, async (req, res) => {
     const userDoc = await db.collection('users').doc(userID).get();
 
     if (!userDoc.exists) {
-      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+      return res.status(404).json({ 
+        error: true,
+        message: 'Pengguna tidak ditemukan' 
+      });
     }
 
     const userData = userDoc.data();
 
     res.status(200).json({
-      status: 'Success',
+      error: false,
       message: "Data pengguna berhasil didapatkan",
-      userID: userID,
-      data: userData,
+      data: {
+        userID: userID,
+        userData,
+      }
     });
 
   } catch (error){
     console.log("Error saat mendapatkan data pengguna:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
@@ -200,11 +243,17 @@ app.get('/user', verifyToken, async (req, res) => {
 app.post('/user/scan-result-history', verifyToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Tidak ada Gambar yang diupload' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Tidak ada Gambar yang diupload' 
+      });
     }
 
     if(!req.body.fruitName || !req.body.scanResult){
-      return res.status(400).json({ message: 'Request body tidak lengkap' });
+      return res.status(400).json({ 
+        error: true,
+        message: 'Request body tidak lengkap' 
+      });
     }
 
     const blob = bucket.file(`scanned-images/${req.user.userID}/${req.file.originalname}`);
@@ -213,7 +262,10 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
     });
 
     blobStream.on('error', (err) => {
-      res.status(500).json({ message: err.message });
+      res.status(500).json({ 
+        error: true,
+        message: err.message 
+      });
     });
 
     blobStream.on('finish', async () => {
@@ -232,18 +284,23 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
         .doc(scanHistoryID)
         .set(scanHistoryData);
       res.status(200).json({
-        status: 'Success',
+        error: false,
         message: 'Upload scan result berhasil',
         userID: req.user.userID,
-        scanID: scanHistoryID,
-        data: scanHistoryData,
+        data: {
+          scanID: scanHistoryID,
+          scanHistoryData,
+        }
       });
     });
 
     blobStream.end(req.file.buffer);
     }catch (error) {
       console.error('Error saat menyimpan hasil scan:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ 
+        error: true,
+        message: error.message 
+      });
     }
 });
 
@@ -272,11 +329,14 @@ app.get('/user/scan-result-history', verifyToken, async (req, res) => {
     }));
 
     if (scanHistory.length === 0) {
-      return res.status(404).json({ message: 'Tidak ada hasil scan yang ditemukan dengan kriteria yang diberikan' });
+      return res.status(404).json({ 
+        error: true,
+        message: 'Tidak ada hasil scan yang ditemukan dengan kriteria yang diberikan' 
+      });
     }
 
     res.status(200).json({
-      status: 'Success',
+      error: false,
       message: 'Riwayat scan berhasil ditampilkan',
       userID: req.user.userID,
       data: {
@@ -285,7 +345,10 @@ app.get('/user/scan-result-history', verifyToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error saat mendapatkan riwayat scan:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
@@ -297,7 +360,10 @@ app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) =>
     const userDoc = await db.collection('users').doc(req.user.userID).get();
 
     if (!userDoc.exists) {
-      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+      return res.status(404).json({ 
+        error: true,
+        message: 'Pengguna tidak ditemukan' 
+      });
     }
 
     const scanDoc = await db
@@ -308,7 +374,10 @@ app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) =>
       .get();
 
     if (!scanDoc.exists) {
-      return res.status(404).json({ message: 'Hasil scan tidak ditemukan' });
+      return res.status(404).json({ 
+        error: true,
+        message: 'Hasil scan tidak ditemukan' 
+      });
     }
 
     const scanData = scanDoc.data();
@@ -332,14 +401,17 @@ app.delete('/user/scan-result-history/:scanID', verifyToken, async (req, res) =>
       .delete();
 
     res.status(200).json({
-      status: 'Success',
+      error: false,
       message: 'Hasil scan berhasil dihapus',
       userID: req.user.userID,
       scanID: scanID
     });
   } catch (error) {
     console.error('Error saat menghapus hasil scan:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
@@ -349,7 +421,10 @@ app.delete('/user/scan-result-history', verifyToken, async (req, res) => {
     const userDoc = await db.collection('users').doc(req.user.userID).get();
 
     if (!userDoc.exists) {
-      return res.status(404).json({ message: 'Pengguna tidak ditemukan' });
+      return res.status(404).json({ 
+        error: true,
+        message: 'Pengguna tidak ditemukan' 
+      });
     }
 
     const scanHistorySnapshot = await db
@@ -381,13 +456,16 @@ app.delete('/user/scan-result-history', verifyToken, async (req, res) => {
     await batch.commit();
 
     res.status(200).json({
-      status: 'Success',
+      error: false,
       message: 'Semua riwayat hasil scan berhasil dihapus',
       userID: req.user.userID
     });
   } catch (error) {
     console.error('Error saat menghapus semua hasil scan:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      error: true,
+      message: error.message 
+    });
   }
 });
 
