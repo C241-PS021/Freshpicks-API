@@ -19,20 +19,13 @@ Register new user and store the data in Firestore
 **Request Body:**
 > - username as `string`,
 > - email as `string`, must be unique
-> - password as `string`
+> - password as `string`, must be atleast 8 character
 
 **Response:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Registrasi Berhasil!",
-    "userID": "<userID>",
-    "data": {
-      "username": "<username>",
-      "email": "<email>",
-      "password": "<hash password>", 
-      "dateOfRegistration": "<dateOfRegistration>"
-    }
   }
   ```
 
@@ -56,14 +49,16 @@ Login existing user
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Login Berhasil!",
-    "userID": "<userID>",
     "data": {
+      "userID": "<userID>",
       "username": "<username>",
       "email": "<email>",
+      "password": "<password>",
+      "dateOfRegistration": "<dateOfRegistration>",
+      "token": "<token>"
     }
-    "token": "<token>"
   }
   ```
 
@@ -87,7 +82,7 @@ Get supported fruit name, description, and image
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Daftar buah berhasil didapatkan",
     "fruitList": [
             {
@@ -118,10 +113,10 @@ Get user detail from Firestore
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Data pengguna berhasil didapatkan",
-    "userID": "<userID>",
     "data": {
+      "userID": "<userID>",
       "username": "<username>",
       "email": "<email>",
       "password": "<hash password>", 
@@ -155,11 +150,11 @@ Upload scan result to Google Cloud Storage and Firestore
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Upload scan result berhasil",
     "userID": "<userID>",
-    "scanID": "<scanID>",
     "data": {
+      "scanID": "<scanID>",
       "fruitName": "<fruitName>",
       "scanResult": "<scanResult>",
       "scannedImageURL": "<scannedImageURL>", 
@@ -193,7 +188,7 @@ Get user scan result history from Google Cloud Storage and Firestore
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Riwayat scan berhasil didapatkan",
     "userID": "<userID>",
     "scanHistory": [
@@ -227,7 +222,7 @@ Delete user scan result history by scanid from Google Cloud Storage and Firestor
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Hasil scan berhasil dihapus",
     "userID": "<userID>",
     "scanID": "<scanID>"
@@ -254,7 +249,7 @@ Delete all user scan result history from Google Cloud Storage and Firestore
 **Response Data:**
   ```json
   {
-    "status": "Success",
+    "error": "false",
     "message": "Semua riwayat hasil scan berhasil dihapus",
     "userID": "<userID>",
   }
