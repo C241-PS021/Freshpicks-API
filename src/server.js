@@ -192,7 +192,6 @@ app.get('/fruits', verifyToken, async (req, res) => {
 
     res.status(200).json({
       error: false,
-      status: 'Success',
       message: 'Daftar buah berhasil didapatkan',
       fruitList: fruits,
     });
@@ -255,8 +254,10 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
         message: 'Request body tidak lengkap' 
       });
     }
+    
+    const scanHistoryID = crypto.randomUUID();
 
-    const blob = bucket.file(`scanned-images/${req.user.userID}/${req.file.originalname}`);
+    const blob = bucket.file(`scanned-images/${req.user.userID}/${scanHistoryID}`);
     const blobStream = blob.createWriteStream({
       resumable: false,
     });
@@ -269,7 +270,6 @@ app.post('/user/scan-result-history', verifyToken, upload.single('image'), async
     });
 
     blobStream.on('finish', async () => {
-      const scanHistoryID = crypto.randomUUID();
       const scanHistoryData = {
         fruitName: req.body.fruitName,
         scanResult: req.body.scanResult,
